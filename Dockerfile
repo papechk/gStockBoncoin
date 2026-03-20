@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev libxml2-dev libsqlite3-dev \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
-    && docker-php-ext-install pdo pdo_sqlite pdo_mysql mbstring exif pcntl bcmath gd \
+    && docker-php-ext-install pdo pdo_sqlite mbstring exif pcntl bcmath gd \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -28,13 +28,12 @@ RUN cp .env.render .env
 RUN composer dump-autoload --optimize
 RUN npm run build
 
-RUN touch database/database.sqlite \
-    && chown -R www-data:www-data storage bootstrap/cache database
+RUN php artisan key:generate --force
 
-RUN php artisan key:generate --force \
-    && php artisan config:clear \
-    && php artisan migrate --force \
-    && php artisan db:seed --force
+RUN chown -R www-data:www-data storage bootstrap/cache database
 
-EXPOSE 80
-CMD ["apache2-foreground"]
+COPY docker/start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
+EXPOSE 10000
+CMD ["/usr/local/bin/start.sh"]
